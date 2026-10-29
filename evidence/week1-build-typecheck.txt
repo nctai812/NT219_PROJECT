@@ -1,0 +1,10 @@
+=== npm run typecheck === 
+
+> api@1.0.0 typecheck
+> tsc --noEmit
+
+=== npm run build === 
+
+> api@1.0.0 build
+> tsc
+

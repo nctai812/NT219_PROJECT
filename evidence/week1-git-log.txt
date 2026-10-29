@@ -1,0 +1,4 @@
+f17003d Add patch and post
+fcf6738 Add product read and create endpoints with strict validation
+a912d6d Configure TypeScript build and type checking
+6066cbc Initialize Fastify backend API

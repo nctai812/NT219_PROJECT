@@ -1,0 +1,30 @@
+=== PATCH sua price === 
+{"data":{"id":2,"name":"Gaming Mouse","price":400000,"stock":20}}
+HTTP %{http_code}
+=== PATCH stock = 0 === 
+{"data":{"id":2,"name":"Gaming Mouse","price":400000,"stock":0}}
+HTTP %{http_code}
+=== PATCH ten co khoang trang thua === 
+{"data":{"id":2,"name":"Gaming Mouse Pro","price":400000,"stock":0}}
+HTTP %{http_code}
+=== PATCH body rong === 
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have fewer than 1 properties"}
+HTTP %{http_code}
+=== PATCH truong la id === 
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have additional properties"}
+HTTP %{http_code}
+=== PATCH price am === 
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body/price must be >= 0"}
+HTTP %{http_code}
+=== PATCH ten toan khoang trang === 
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body/name must match pattern \"\\S\""}
+HTTP %{http_code}
+=== PATCH id 999 khong ton tai === 
+{"error":"Product not found"}
+HTTP %{http_code}
+=== PATCH id abc === 
+{"error":"Invalid product ID"}
+HTTP %{http_code}
+=== GET /products/2 cuoi cung === 
+{"data":{"id":2,"name":"Gaming Mouse Pro","price":400000,"stock":0}}
+HTTP %{http_code}
