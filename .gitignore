@@ -15,3 +15,7 @@
 # Operating system
 Thumbs.db
 .DS_Store
+
+# Ghi chú cá nhân, không đưa lên Git
+docs/KienThucTongHop/
+~$*
