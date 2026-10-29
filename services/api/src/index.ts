@@ -122,6 +122,61 @@ app.post<{ Body: CreateProductBody }>(
   },
 );
 
+// Mọi trường đều TÙY CHỌN: client gửi trường nào thì ta sửa trường đó
+type UpdateProductBody = Partial<CreateProductBody>;
+
+app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
+  "/products/:id",
+  {
+    schema: {
+      body: {
+        type: "object",
+        // Không có "required": client được phép gửi một phần
+        // minProperties: 1 chặn body rỗng {} (gửi lên mà không sửa gì thì vô nghĩa)
+        minProperties: 1,
+        // Chặn mọi trường ngoài danh sách. Quan trọng: client không thể
+        // gửi {"id": 99} để đổi ID của sản phẩm
+        additionalProperties: false,
+        properties: {
+          name: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            pattern: "\\S",
+          },
+          price: { type: "number", minimum: 0 },
+          stock: { type: "integer", minimum: 0 },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    // Kiểm tra ID giống endpoint GET /products/:id
+    const id = Number(request.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return reply.code(400).send({ error: "Invalid product ID" });
+    }
+
+    const product = products.find((item) => item.id === id);
+
+    if (!product) {
+      return reply.code(404).send({ error: "Product not found" });
+    }
+
+    const { name, price, stock } = request.body;
+
+    // Dùng "!== undefined" chứ KHÔNG dùng "if (price)":
+    // nếu viết "if (stock)" thì stock = 0 (hết hàng, hợp lệ) sẽ bị bỏ qua
+    // vì số 0 được JavaScript coi là "sai" (falsy).
+    if (name !== undefined) product.name = name.trim();
+    if (price !== undefined) product.price = price;
+    if (stock !== undefined) product.stock = stock;
+
+    return { data: product };
+  },
+);
+
 const start = async () => {
   try {
     await app.listen({
