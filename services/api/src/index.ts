@@ -177,6 +177,33 @@ app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
   },
 );
 
+app.delete<{ Params: { id: string } }>(
+  "/products/:id",
+  async (request, reply) => {
+    // Kiểm tra ID giống GET và PATCH
+    const id = Number(request.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return reply.code(400).send({ error: "Invalid product ID" });
+    }
+
+    // findIndex trả về VỊ TRÍ trong mảng (0, 1, 2...), không phải id.
+    // Không tìm thấy thì trả -1.
+    const index = products.findIndex((item) => item.id === id);
+
+    if (index === -1) {
+      return reply.code(404).send({ error: "Product not found" });
+    }
+
+    // splice(vị trí, số phần tử) xóa phần tử khỏi mảng tại chỗ
+    products.splice(index, 1);
+
+    // 204 No Content: xóa thành công và không có nội dung trả về.
+    // Với 204, không được gửi body.
+    return reply.code(204).send();
+  },
+);
+
 const start = async () => {
   try {
     await app.listen({
