@@ -1,0 +1,80 @@
+E:\NT219_PROJECT>docker exec -i securemart-db psql -U securemart -d securemart < database\schema.sql
+CREATE TABLE
+
+E:\NT219_PROJECT>\dt
+'\dt' is not recognized as an internal or external command,
+operable program or batch file.
+
+E:\NT219_PROJECT>   docker exec -it securemart-db psql -U securemart -d securemart
+psql (17.11 (Debian 17.11-1.pgdg13+2))
+Type "help" for help.
+
+securemart=# \dt
+           List of relations
+ Schema |   Name   | Type  |   Owner    
+--------+----------+-------+------------
+ public | products | table | securemart
+(1 row)
+
+securemart=# INSERT INTO products (name, price, stock)
+VALUES ('Keyboard', 850000, 10),
+       ('Gaming Mouse', 450000, 20),
+       ('USB-C Hub', 320000, 15);
+INSERT 0 3
+securemart=# SELECT * FROM products ORDER BY id;
+ id |     name     |   price   | stock |          created_at           
+----+--------------+-----------+-------+-------------------------------
+  1 | Keyboard     | 850000.00 |    10 | 2026-10-30 08:31:19.006324+00
+  2 | Gaming Mouse | 450000.00 |    20 | 2026-10-30 08:31:19.006324+00
+  3 | USB-C Hub    | 320000.00 |    15 | 2026-10-30 08:31:19.006324+00
+(3 rows)
+
+securemart=# SELECT name, price FROM products WHERE stock > 10;
+SELECT * FROM products WHERE id = 2;
+     name     |   price   
+--------------+-----------
+ Gaming Mouse | 450000.00
+ USB-C Hub    | 320000.00
+(2 rows)
+
+ id |     name     |   price   | stock |          created_at           
+----+--------------+-----------+-------+-------------------------------
+  2 | Gaming Mouse | 450000.00 |    20 | 2026-10-30 08:31:19.006324+00
+(1 row)
+
+securemart=# UPDATE products SET price = 400000 WHERE id = 2;
+SELECT * FROM products WHERE id = 2;
+UPDATE 1
+ id |     name     |   price   | stock |          created_at           
+----+--------------+-----------+-------+-------------------------------
+  2 | Gaming Mouse | 400000.00 |    20 | 2026-10-30 08:31:19.006324+00
+(1 row)
+
+securemart=# DELETE FROM products WHERE id = 3;
+SELECT * FROM products ORDER BY id;
+DELETE 1
+ id |     name     |   price   | stock |          created_at           
+----+--------------+-----------+-------+-------------------------------
+  1 | Keyboard     | 850000.00 |    10 | 2026-10-30 08:31:19.006324+00
+  2 | Gaming Mouse | 400000.00 |    20 | 2026-10-30 08:31:19.006324+00
+(2 rows)
+
+securemart=# INSERT INTO products (name, price, stock) VALUES ('Loi', 1, -5);
+INSERT INTO products (name, price, stock) VALUES ('   ', 1, 1);
+INSERT INTO products (name, price, stock) VALUES (NULL, 1, 1);
+ERROR:  new row for relation "products" violates check constraint "products_stock_check"
+DETAIL:  Failing row contains (4, Loi, 1.00, -5, 2026-10-30 08:32:28.398398+00).
+ERROR:  new row for relation "products" violates check constraint "products_name_check"
+DETAIL:  Failing row contains (5,    , 1.00, 1, 2026-10-30 08:32:28.402809+00).
+ERROR:  null value in column "name" of relation "products" violates not-null constraint
+DETAIL:  Failing row contains (6, null, 1.00, 1, 2026-10-30 08:32:28.40415+00).
+securemart=# INSERT INTO products (name, price, stock) VALUES ('Test', 1, 1) RETURNING id;
+ id 
+----
+  7
+(1 row)
+
+INSERT 0 1
+securemart=# TRUNCATE products RESTART IDENTITY;
+\q
+TRUNCATE TABLE
