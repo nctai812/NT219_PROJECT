@@ -1,5 +1,8 @@
 import Fastify from "fastify";
 
+// Lưu ý: phải có đuôi ".js" dù file nguồn là db.ts (quy tắc của NodeNext)
+import { pool } from "./db.js";
+
 const app = Fastify({
   logger: true,
   ajv: {
@@ -17,6 +20,24 @@ app.get("/health", async () => {
     service: "marketplace-api",
     message: "Backend is running",
   };
+});
+
+// Kiểm tra API có nói chuyện được với PostgreSQL không
+app.get("/health/db", async (_request, reply) => {
+  try {
+    await pool.query("SELECT 1 AS ok");
+    return { status: "ok", database: "connected" };
+  } catch (error) {
+    // Chi tiết lỗi chỉ ghi vào log phía server, KHÔNG trả cho client
+    // (lỗi database có thể lộ địa chỉ, tên user, cấu trúc hệ thống)
+    app.log.error(error);
+    return reply.code(503).send({ status: "error", database: "unavailable" });
+  }
+});
+
+// Khi server tắt thì trả hết kết nối về cho database
+app.addHook("onClose", async () => {
+  await pool.end();
 });
 
 const products = [
