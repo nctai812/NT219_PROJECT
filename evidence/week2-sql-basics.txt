@@ -78,3 +78,41 @@ INSERT 0 1
 securemart=# TRUNCATE products RESTART IDENTITY;
 \q
 TRUNCATE TABLE
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products
+{"data":[{"id":1,"name":"Keyboard","price":850000,"stock":10},{"id":2,"name":"Gaming Mouse","price":450000,"stock":20},{"id":3,"name":"USB-C Hub","price":320000,"stock":15}],"total":3}
+HTTP 200
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products/2
+{"data":{"id":2,"name":"Gaming Mouse","price":450000,"stock":20}}
+HTTP 200
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products/abc
+{"error":"Invalid product ID"}
+HTTP 400
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products/999
+{"error":"Product not found"}
+HTTP 404
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products/99999999999
+{"error":"Invalid product ID"}
+HTTP 400
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" "http://localhost:3000/products/1%%20OR%%201=1"
+{"error":"Bad Request","code":"FST_ERR_BAD_URL","message":"'/products/1%%20OR%%201=1' is not a valid url component","statusCode":400}
+HTTP 400
+
+E:\NT219_PROJECT\services\api>docker compose exec db psql -U securemart -d securemart -c "UPDATE products SET price = 123456 WHERE id = 1;"
+UPDATE 1
+
+E:\NT219_PROJECT\services\api>curl -s http://localhost:3000/products/1
+{"data":{"id":1,"name":"Keyboard","price":123456,"stock":10}}
+E:\NT219_PROJECT\services\api>docker compose stop
+[+] stop 1/1
+ ✔ Container securemart-db Stopped                                                                                                        0.4s
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" http://localhost:3000/products
+{"error":"Internal server error"}
+HTTP 500
+

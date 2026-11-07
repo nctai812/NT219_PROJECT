@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyError } from "fastify";
 
 // Lưu ý: phải có đuôi ".js" dù file nguồn là db.ts (quy tắc của NodeNext)
 import { pool } from "./db.js";
@@ -14,6 +14,27 @@ const app = Fastify({
     },
   },
 });
+
+// Bộ xử lý lỗi chung: lỗi phía server (5xx) chỉ ghi log, KHÔNG trả chi tiết cho client.
+// Lỗi phía client (4xx, như lỗi schema) vẫn giữ nguyên thông báo để người dùng sửa được.
+app.setErrorHandler((error: FastifyError, request, reply) => {
+  const statusCode = error.statusCode ?? 500;
+
+  if (statusCode >= 500) {
+    request.log.error(error);
+    return reply.code(500).send({ error: "Internal server error" });
+  }
+
+  return reply.send(error);
+});
+
+// Kiểm tra ID dùng chung cho mọi route: trả số nếu hợp lệ, null nếu không.
+// 2147483647 là giá trị lớn nhất của INTEGER trong PostgreSQL.
+function parseProductId(raw: string): number | null {
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 && id <= 2147483647 ? id : null;
+}
+
 app.get("/health", async () => {
   return {
     status: "ok",
@@ -40,54 +61,39 @@ app.addHook("onClose", async () => {
   await pool.end();
 });
 
-const products = [
-  {
-    id: 1,
-    name: "Keyboard",
-    price: 850000,
-    stock: 10,
-  },
-  {
-    id: 2,
-    name: "Gaming Mouse",
-    price: 450000,
-    stock: 20,
-  },
-  {
-    id: 3,
-    name: "USB-C Hub",
-    price: 320000,
-    stock: 15,
-  },
-];
-
 app.get("/products", async () => {
+  // Câu lệnh cố định, không có dữ liệu từ client nên không cần tham số
+  const result = await pool.query(
+    "SELECT id, name, price, stock FROM products ORDER BY id",
+  );
+
   return {
-    data: products,
-    total: products.length,
+    data: result.rows,
+    total: result.rows.length,
   };
 });
 
 app.get<{ Params: { id: string } }>("/products/:id", async (request, reply) => {
-  const id = Number(request.params.id);
+  const id = parseProductId(request.params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return reply.code(400).send({
-      error: "Invalid product ID",
-    });
+  if (id === null) {
+    return reply.code(400).send({ error: "Invalid product ID" });
   }
 
-  const product = products.find((item) => item.id === id);
+  // $1 là chỗ giữ chỗ: giá trị id đi riêng trong mảng [id], không bị nối vào câu lệnh
+  const result = await pool.query(
+    "SELECT id, name, price, stock FROM products WHERE id = $1",
+    [id],
+  );
+
+  // rows[0] là hàng đầu tiên, không có hàng nào thì là undefined
+  const product = result.rows[0];
 
   if (!product) {
-    return reply.code(404).send({
-      error: "Product not found",
-    });
+    return reply.code(404).send({ error: "Product not found" });
   }
 
-  return {
-    data: product,
-  };
+  return { data: product };
 });
 
 // Kiểu dữ liệu của body mà client gửi lên (TypeScript chỉ kiểm tra lúc biên dịch)
@@ -100,24 +106,22 @@ type CreateProductBody = {
 app.post<{ Body: CreateProductBody }>(
   "/products",
   {
-    // Schema kiểm tra dữ liệu lúc chạy thật. Sai schema thì Fastify tự trả 400,
-    // code bên dưới sẽ không được chạy.
     schema: {
       body: {
         type: "object",
-        required: ["name", "price", "stock"], // bắt buộc đủ 3 trường
-        additionalProperties: false, // không cho phép trường lạ
+        required: ["name", "price", "stock"],
+        additionalProperties: false,
         properties: {
           name: {
             type: "string",
             minLength: 1,
             maxLength: 100,
-            // \S = ký tự không phải khoảng trắng.
-            // Yêu cầu có ít nhất 1 ký tự thật, chặn tên chỉ gồm "   "
             pattern: "\\S",
           },
-          price: { type: "number", minimum: 0 }, // số, không âm
-          stock: { type: "integer", minimum: 0 }, // số nguyên, không âm
+          // maximum khớp với NUMERIC(12,2): vượt quá thì database báo lỗi
+          price: { type: "number", minimum: 0, maximum: 9999999999 },
+          // maximum khớp với kiểu INTEGER của PostgreSQL
+          stock: { type: "integer", minimum: 0, maximum: 2147483647 },
         },
       },
     },
@@ -125,24 +129,15 @@ app.post<{ Body: CreateProductBody }>(
   async (request, reply) => {
     const { name, price, stock } = request.body;
 
-    // ID mới = ID lớn nhất hiện có + 1.
-    // Không dùng products.length + 1 vì sau này khi xóa sản phẩm sẽ bị trùng ID.
-    const newId = Math.max(0, ...products.map((item) => item.id)) + 1;
+    // ID do database tự cấp (IDENTITY), RETURNING trả luôn hàng vừa tạo.
+    const result = await pool.query(
+      "INSERT INTO products (name, price, stock) VALUES ($1, $2, $3) RETURNING id, name, price, stock",
+      [name.trim(), price, stock],
+    );
 
-    const newProduct = {
-      id: newId,
-      name: name.trim(), // loại khoảng trắng thừa ở hai đầu
-      price,
-      stock,
-    };
-
-    products.push(newProduct);
-
-    // 201 Created: tạo mới thành công (khác 200 OK)
-    return reply.code(201).send({ data: newProduct });
+    return reply.code(201).send({ data: result.rows[0] });
   },
 );
-
 // Mọi trường đều TÙY CHỌN: client gửi trường nào thì ta sửa trường đó
 type UpdateProductBody = Partial<CreateProductBody>;
 
@@ -152,11 +147,7 @@ app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
     schema: {
       body: {
         type: "object",
-        // Không có "required": client được phép gửi một phần
-        // minProperties: 1 chặn body rỗng {} (gửi lên mà không sửa gì thì vô nghĩa)
         minProperties: 1,
-        // Chặn mọi trường ngoài danh sách. Quan trọng: client không thể
-        // gửi {"id": 99} để đổi ID của sản phẩm
         additionalProperties: false,
         properties: {
           name: {
@@ -165,34 +156,54 @@ app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
             maxLength: 100,
             pattern: "\\S",
           },
-          price: { type: "number", minimum: 0 },
-          stock: { type: "integer", minimum: 0 },
+          price: { type: "number", minimum: 0, maximum: 9999999999 },
+          stock: { type: "integer", minimum: 0, maximum: 2147483647 },
         },
       },
     },
   },
   async (request, reply) => {
-    // Kiểm tra ID giống endpoint GET /products/:id
-    const id = Number(request.params.id);
+    const id = parseProductId(request.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (id === null) {
       return reply.code(400).send({ error: "Invalid product ID" });
-    }
-
-    const product = products.find((item) => item.id === id);
-
-    if (!product) {
-      return reply.code(404).send({ error: "Product not found" });
     }
 
     const { name, price, stock } = request.body;
 
-    // Dùng "!== undefined" chứ KHÔNG dùng "if (price)":
-    // nếu viết "if (stock)" thì stock = 0 (hết hàng, hợp lệ) sẽ bị bỏ qua
-    // vì số 0 được JavaScript coi là "sai" (falsy).
-    if (name !== undefined) product.name = name.trim();
-    if (price !== undefined) product.price = price;
-    if (stock !== undefined) product.stock = stock;
+    // Ghép phần SET chỉ từ các trường client có gửi.
+    // - Tên cột (name, price, stock) là chuỗi CỐ ĐỊNH do ta viết, không lấy từ client.
+    // - Giá trị đi vào mảng values và được tham chiếu bằng $1, $2, ...
+    // - Dấu $ trong `$${...}` chỉ ghép SỐ THỨ TỰ placeholder, không chứa dữ liệu client.
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+
+    if (name !== undefined) {
+      values.push(name.trim());
+      setClauses.push(`name = $${values.length}`);
+    }
+    if (price !== undefined) {
+      values.push(price);
+      setClauses.push(`price = $${values.length}`);
+    }
+    if (stock !== undefined) {
+      values.push(stock);
+      setClauses.push(`stock = $${values.length}`);
+    }
+
+    // id là tham số cuối cùng, dùng cho WHERE
+    values.push(id);
+
+    const result = await pool.query(
+      `UPDATE products SET ${setClauses.join(", ")} WHERE id = $${values.length} RETURNING id, name, price, stock`,
+      values,
+    );
+
+    const product = result.rows[0];
+
+    if (!product) {
+      return reply.code(404).send({ error: "Product not found" });
+    }
 
     return { data: product };
   },
@@ -201,26 +212,23 @@ app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
 app.delete<{ Params: { id: string } }>(
   "/products/:id",
   async (request, reply) => {
-    // Kiểm tra ID giống GET và PATCH
-    const id = Number(request.params.id);
+    const id = parseProductId(request.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (id === null) {
       return reply.code(400).send({ error: "Invalid product ID" });
     }
 
-    // findIndex trả về VỊ TRÍ trong mảng (0, 1, 2...), không phải id.
-    // Không tìm thấy thì trả -1.
-    const index = products.findIndex((item) => item.id === id);
+    // RETURNING id cho biết có hàng nào thật sự bị xóa không
+    const result = await pool.query(
+      "DELETE FROM products WHERE id = $1 RETURNING id",
+      [id],
+    );
 
-    if (index === -1) {
+    if (result.rows.length === 0) {
       return reply.code(404).send({ error: "Product not found" });
     }
 
-    // splice(vị trí, số phần tử) xóa phần tử khỏi mảng tại chỗ
-    products.splice(index, 1);
-
-    // 204 No Content: xóa thành công và không có nội dung trả về.
-    // Với 204, không được gửi body.
+    // 204: thành công, không có nội dung
     return reply.code(204).send();
   },
 );

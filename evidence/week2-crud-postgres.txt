@@ -1,0 +1,81 @@
+E:\NT219_PROJECT\services\api>docker compose start
+[+] start 1/1
+ ✔ Container securemart-db Started                                                                                                        0.3s
+
+E:\NT219_PROJECT\services\api>curl -s -w "\nHTTP %{http_code}\n" "http://localhost:3000/products/1%20OR%201=1"
+{"error":"Invalid product ID"}
+HTTP 400
+
+E:\NT219_PROJECT>docker compose exec -T db psql -U securemart -d securemart < database\seed.sql
+TRUNCATE TABLE
+INSERT 0 3
+
+E:\NT219_PROJECT>curl -s http://localhost:3000/products
+{"data":[{"id":1,"name":"Keyboard","price":850000,"stock":10},{"id":2,"name":"Gaming Mouse","price":450000,"stock":20},{"id":3,"name":"USB-C Hub","price":320000,"stock":15}],"total":3}
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X POST http://localhost:3000/products -H "Content-Type: application/json" -d "{\"name\":\"Webcam\",\"price\":900000,\"stock\":5}"
+{"data":{"id":4,"name":"Webcam","price":900000,"stock":5}}
+HTTP 201
+
+E:\NT219_PROJECT>curl -s http://localhost:3000/products
+{"data":[{"id":1,"name":"Keyboard","price":850000,"stock":10},{"id":2,"name":"Gaming Mouse","price":450000,"stock":20},{"id":3,"name":"USB-C Hub","price":320000,"stock":15},{"id":4,"name":"Webcam","price":900000,"stock":5}],"total":4}
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/4 -H "Content-Type: application/json" -d "{\"price\":800000}"
+{"data":{"id":4,"name":"Webcam","price":800000,"stock":5}}
+HTTP 200
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/4 -H "Content-Type: application/json" -d "{\"stock\":0}"
+{"data":{"id":4,"name":"Webcam","price":800000,"stock":0}}
+HTTP 200
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/4 -H "Content-Type: application/json" -d "{\"name\":\"  Webcam HD  \"}"
+{"data":{"id":4,"name":"Webcam HD","price":800000,"stock":0}}
+HTTP 200
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/4 -H "Content-Type: application/json" -d "{}"
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have fewer than 1 properties"}
+HTTP 400
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/4 -H "Content-Type: application/json" -d "{\"id\":99}"
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have additional properties"}
+HTTP 400
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X PATCH http://localhost:3000/products/999 -H "Content-Type: application/json" -d "{\"price\":1}"
+{"error":"Product not found"}
+HTTP 404
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X DELETE http://localhost:3000/products/4
+
+HTTP 204
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X DELETE http://localhost:3000/products/4
+{"error":"Product not found"}
+HTTP 404
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X POST http://localhost:3000/products -H "Content-Type: application/json" -d "{\"name\":\"Test\",\"price\":1,\"stock\":1}"
+{"data":{"id":5,"name":"Test","price":1,"stock":1}}
+HTTP 201
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X POST http://localhost:3000/products -H "Content-Type: application/json" -d "{\"name\":\"X\",\"price\":99999999999999,\"stock\":1}"
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body/price must be <= 9999999999"}
+HTTP 400
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X POST http://localhost:3000/products -H "Content-Type: application/json" -d "{\"name\":\"X\",\"price\":1,\"stock\":99999999999}"
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body/stock must be <= 2147483647"}
+HTTP 400
+
+E:\NT219_PROJECT>curl -s -w "\nHTTP %{http_code}\n" -X POST http://localhost:3000/products -H "Content-Type: application/json" -d "{\"name\":\"x'); DROP TABLE products; --\",\"price\":1,\"stock\":1}"
+{"data":{"id":6,"name":"x'); DROP TABLE products; --","price":1,"stock":1}}
+HTTP 201
+
+E:\NT219_PROJECT>curl -s http://localhost:3000/products
+{"data":[{"id":1,"name":"Keyboard","price":850000,"stock":10},{"id":2,"name":"Gaming Mouse","price":450000,"stock":20},{"id":3,"name":"USB-C Hub","price":320000,"stock":15},{"id":5,"name":"Test","price":1,"stock":1},{"id":6,"name":"x'); DROP TABLE products; --","price":1,"stock":1}],"total":5}
+E:\NT219_PROJECT>docker compose exec db psql -U securemart -d securemart -c "\dt"
+           List of relations
+ Schema |   Name   | Type  |   Owner    
+--------+----------+-------+------------
+ public | products | table | securemart
+(1 row)
+
+
+E:\NT219_PROJECT>docker compose exec -T db psql -U securemart -d securemart < database\seed.sql
+TRUNCATE TABLE
+INSERT 0 3
