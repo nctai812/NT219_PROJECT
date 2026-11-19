@@ -19,3 +19,6 @@ Thumbs.db
 # Ghi chú cá nhân, không đưa lên Git
 docs/KienThucTongHop/
 ~$*
+
+services/api/keys/
+*.pem

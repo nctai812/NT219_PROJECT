@@ -1,4 +1,5 @@
 import Fastify, { type FastifyError } from "fastify";
+import { requireAuth, requireRole } from "./auth.js";
 
 // Lưu ý: phải có đuôi ".js" dù file nguồn là db.ts (quy tắc của NodeNext)
 import { pool } from "./db.js";
@@ -106,6 +107,8 @@ type CreateProductBody = {
 app.post<{ Body: CreateProductBody }>(
   "/products",
   {
+    onRequest: [requireAuth, requireRole("seller", "admin")],
+
     schema: {
       body: {
         type: "object",
@@ -144,6 +147,8 @@ type UpdateProductBody = Partial<CreateProductBody>;
 app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
   "/products/:id",
   {
+    onRequest: [requireAuth, requireRole("seller", "admin")],
+
     schema: {
       body: {
         type: "object",
@@ -211,6 +216,9 @@ app.patch<{ Params: { id: string }; Body: UpdateProductBody }>(
 
 app.delete<{ Params: { id: string } }>(
   "/products/:id",
+  {
+    onRequest: [requireAuth, requireRole("seller", "admin")],
+  },
   async (request, reply) => {
     const id = parseProductId(request.params.id);
 
