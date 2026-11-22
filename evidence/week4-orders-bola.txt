@@ -1,0 +1,113 @@
+Ca 1: alice dat hang san pham 1 so luong 2, ky vong 201 
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+content-length: 102
+Date: Sun, 22 Nov 2026 15:01:55 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"data":{"id":2,"ownerId":"user-alice","productId":1,"quantity":2,"total":1700000,"status":"pending"}} 
+Ca 2: alice xem don cua chinh minh, ky vong 200 
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+content-length: 102
+Date: Sun, 22 Nov 2026 15:03:45 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"data":{"id":2,"ownerId":"user-alice","productId":1,"quantity":2,"total":1700000,"status":"pending"}} 
+Ca 3: bob xem don cua alice (BOLA), ky vong 404 
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+content-length: 27
+Date: Sun, 22 Nov 2026 15:04:10 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"Order not found"} 
+Ca 4: admin xem don cua alice, ky vong 200 
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+content-length: 102
+Date: Sun, 22 Nov 2026 15:04:17 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"data":{"id":2,"ownerId":"user-alice","productId":1,"quantity":2,"total":1700000,"status":"pending"}} 
+Ca 5: bob liet ke don, ky vong 200 va danh sach rong 
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+content-length: 21
+Date: Sun, 22 Nov 2026 15:04:22 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"data":[],"total":0} 
+Ca 6: khong token, ky vong 401 
+HTTP/1.1 401 Unauthorized
+content-type: application/json; charset=utf-8
+content-length: 32
+Date: Sun, 22 Nov 2026 15:04:29 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"Missing bearer token"} 
+Ca 7: tu khai chu don (ownerId trong body), ky vong 400 
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+content-length: 121
+Date: Sun, 22 Nov 2026 15:04:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have additional properties"} 
+Ca 8: tu dat tong tien (total trong body), ky vong 400 
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+content-length: 121
+Date: Sun, 22 Nov 2026 15:04:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body must NOT have additional properties"} 
+Ca 9: seller dat hang, ky vong 403 
+HTTP/1.1 403 Forbidden
+content-type: application/json; charset=utf-8
+content-length: 21
+Date: Sun, 22 Nov 2026 15:05:01 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"Forbidden"} 
+Ca 10: san pham khong ton tai, ky vong 404 
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+content-length: 29
+Date: Sun, 22 Nov 2026 15:05:07 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"Product not found"} 
+Ca 11: so luong 0, ky vong 400 
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+content-length: 107
+Date: Sun, 22 Nov 2026 15:05:11 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"statusCode":400,"code":"FST_ERR_VALIDATION","error":"Bad Request","message":"body/quantity must be >= 1"} 
+Ca 12: ID don sai dinh dang, ky vong 400 
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+content-length: 28
+Date: Sun, 22 Nov 2026 15:05:17 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+{"error":"Invalid order ID"} id |  owner_id  | product_id | quantity |   total    | status  
+----+------------+------------+----------+------------+---------
+  1 | user-alice |          1 |        2 | 1700000.00 | pending
+  2 | user-alice |          1 |        2 | 1700000.00 | pending
+(2 rows)
+

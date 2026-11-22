@@ -1,6 +1,6 @@
 import Fastify, { type FastifyError } from "fastify";
 import { requireAuth, requireRole } from "./auth.js";
-
+import { registerOrderRoutes } from "./orders.js";
 // Lưu ý: phải có đuôi ".js" dù file nguồn là db.ts (quy tắc của NodeNext)
 import { pool } from "./db.js";
 
@@ -243,6 +243,7 @@ app.delete<{ Params: { id: string } }>(
 
 const start = async () => {
   try {
+    registerOrderRoutes(app);
     await app.listen({
       port: 3000,
       host: "0.0.0.0",
